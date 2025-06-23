@@ -1,4 +1,5 @@
 using Bulky.DataAccess.Data;
+using Bulky.DataAccess.DbInitializer;
 using Bulky.DataAccess.Repository;
 using Bulky.DataAccess.Repository.IRepository;
 using Bulky.Utility;
@@ -22,8 +23,22 @@ builder.Services.ConfigureApplicationCookie(options => {
     options.LogoutPath = $"/Identity/Account/Logout";
     options.AccessDeniedPath = $"/Identity/Account/AccessDenied";
 });
+
+builder.Services.AddAuthentication().AddFacebook(option => {
+    option.AppId = "1247217706263677";
+    option.AppSecret = "9184b67c104f2c7e3ecf1e6d6cb665c4";
+});
+
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options => {
+    options.IdleTimeout = TimeSpan.FromMinutes(100);
+options.Cookie.HttpOnly = true;
+options.Cookie.IsEssential = true;
+});
+
 builder.Services.AddRazorPages();
 
+builder.Services.AddScoped<IDbInitializer, DbInitializer>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 
@@ -45,6 +60,8 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseSession();
+SeedDatabase();
 app.MapRazorPages();
 
 app.MapControllerRoute(
@@ -54,3 +71,12 @@ app.MapControllerRoute(
 
 
 app.Run();
+
+void SeedDatabase()
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
+        dbInitializer.Initialize();
+    }
+}
